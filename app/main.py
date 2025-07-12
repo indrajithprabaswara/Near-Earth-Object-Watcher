@@ -1,4 +1,5 @@
 import asyncio
+import time
 from fastapi import FastAPI, Depends, Request, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -6,6 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
+from prometheus_client import (
+    Counter,
+    Histogram,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
 from .database import SessionLocal, engine
 from . import models, schemas
 from .services import fetch_neos, store_neos
@@ -20,6 +27,18 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 templates = Jinja2Templates(directory="static")
 
+# Prometheus metrics
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "http_status"],
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_latency_seconds",
+    "HTTP request latency",
+    ["method", "endpoint"],
+)
+
 @app.on_event("startup")
 async def startup_event():
     scheduler.start()
@@ -30,6 +49,18 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    method = request.method
+    endpoint = request.url.path
+    start_time = time.monotonic()
+    response = await call_next(request)
+    duration = time.monotonic() - start_time
+    REQUEST_COUNT.labels(method=method, endpoint=endpoint, http_status=response.status_code).inc()
+    REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(duration)
+    return response
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -124,3 +155,8 @@ async def ingest(background_tasks: BackgroundTasks, db: Session = Depends(get_db
             event_queue.put_nowait(schemas.NeoRead.from_orm(n).dict())
     background_tasks.add_task(task)
     return {"status": "started"}
+
+
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
