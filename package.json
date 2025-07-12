@@ -7,18 +7,19 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "npm install && npx playwright install --with-deps",
+    "test:ui": "npx playwright test tests/ui/test_subscribers.spec.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "animejs": "^4.0.2",
     "chart.js": "^4.5.0",
     "d3": "^7.9.0"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.54.1"
   }
 }
