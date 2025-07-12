@@ -110,15 +110,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch {}
   };
 
-  const form = document.getElementById('subForm');
-  if (form) {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const url = document.getElementById('subUrl').value;
-      try {
-        await fetch('/subscribe', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url})});
-      } catch {}
-      document.getElementById('subUrl').value = '';
+  async function renderSubs() {
+    const list = document.getElementById('subscriberList');
+    if (!list) return;
+    let subs = [];
+    try {
+      const res = await fetch('/subscribers');
+      if (res.ok) subs = await res.json();
+    } catch {}
+    list.innerHTML = '';
+    subs.forEach(s => {
+      const li = document.createElement('li');
+      li.dataset.id = s.id;
+      li.textContent = s.url + ' ';
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.className = 'del';
+      del.addEventListener('click', async () => {
+        try { await fetch(`/subscribers/${s.id}`, { method: 'DELETE' }); } catch {}
+        li.remove();
+      });
+      li.appendChild(del);
+      list.appendChild(li);
     });
   }
+
+  const addBtn = document.getElementById('addSub');
+  if (addBtn) {
+    addBtn.addEventListener('click', async () => {
+      const input = document.getElementById('newUrl');
+      const url = input.value;
+      try {
+        await fetch('/subscribe', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url }) });
+        input.value = '';
+      } catch {}
+      await renderSubs();
+    });
+  }
+
+  renderSubs();
 });

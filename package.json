@@ -17,5 +17,8 @@
     "animejs": "^4.0.2",
     "chart.js": "^4.5.0",
     "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1"
   }
 }
