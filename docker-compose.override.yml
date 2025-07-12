@@ -1,0 +1,20 @@
+version: '3'
+services:
+  app:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      NASA_API_KEY: ${NASA_API_KEY}
+      DATABASE_URL: postgres://postgres:password@db:5432/neo_watcher
+      SLACK_URL: ${SLACK_URL}
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: neo_watcher
+    volumes:
+      - neo-data:/var/lib/postgresql/data
+volumes:
+  neo-data:
