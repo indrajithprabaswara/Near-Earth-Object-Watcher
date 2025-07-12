@@ -1,0 +1,21 @@
+{
+  "name": "near-earth-object-watcher",
+  "version": "1.0.0",
+  "description": "You are a senior Python full-stack engineer. In ONE SHOT, generate a full “Near-Earth Object Watcher” project that meets all 13 A-Level rubric items, hard-codes the NASA API key and Slack webhook, and then immediately runs every test and verifies every interface. The UI must be professional-grade, with smooth animations and advanced charts. Here are the requirements:",
+  "main": "playwright.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "animejs": "^4.0.2",
+    "chart.js": "^4.5.0",
+    "d3": "^7.9.0"
+  }
+}
