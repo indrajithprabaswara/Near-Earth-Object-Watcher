@@ -8,3 +8,5 @@ client = TestClient(app)
 def test_neos_endpoint():
     resp = client.get("/neos")
     assert resp.status_code == 200
+
+

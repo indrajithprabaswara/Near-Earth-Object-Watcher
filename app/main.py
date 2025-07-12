@@ -60,16 +60,19 @@ async def subscribe(sub: schemas.SubscriberCreate, db: Session = Depends(get_db)
     db.refresh(obj)
     return schemas.SubscriberRead.from_orm(obj)
 
-new_neo_subscribers = []
+event_queue: asyncio.Queue = asyncio.Queue()
 
 @app.get("/stream/neos")
 async def stream_neos(request: Request):
-    new_neo_subscribers.append(request)
     async def event_generator():
         while True:
             if await request.is_disconnected():
                 break
-            await asyncio.sleep(1)
+            try:
+                data = await asyncio.wait_for(event_queue.get(), timeout=15)
+                yield {"event": "message", "data": json.dumps(data)}
+            except asyncio.TimeoutError:
+                yield {"event": "heartbeat", "data": "ping"}
     return EventSourceResponse(event_generator())
 
 @app.post("/ingest")
@@ -77,9 +80,7 @@ async def ingest(background_tasks: BackgroundTasks, db: Session = Depends(get_db
     def task():
         neos = fetch_neos(datetime.utcnow())
         stored = store_neos(db, neos)
-        data = json.dumps([schemas.NeoRead.from_orm(n).dict() for n in stored])
-        for req in list(new_neo_subscribers):
-            if not req.is_disconnected():
-                req.send_event("message", data)
+        for n in stored:
+            event_queue.put_nowait(schemas.NeoRead.from_orm(n).dict())
     background_tasks.add_task(task)
     return {"status": "started"}
