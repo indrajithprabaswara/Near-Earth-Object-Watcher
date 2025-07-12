@@ -10,6 +10,7 @@ from .database import SessionLocal, engine
 from . import models, schemas
 from .services import fetch_neos, store_neos
 from .scheduler import scheduler
+from .events import event_queue
 from datetime import datetime, date
 import json
 
@@ -100,8 +101,6 @@ async def delete_subscriber(sub_id: int, db: Session = Depends(get_db)):
     db.delete(sub)
     db.commit()
     return Response(status_code=204)
-
-event_queue: asyncio.Queue = asyncio.Queue()
 
 @app.get("/stream/neos")
 async def stream_neos(request: Request):

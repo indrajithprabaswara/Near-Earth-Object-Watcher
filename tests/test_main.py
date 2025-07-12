@@ -4,7 +4,7 @@ from datetime import date
 
 from app import services, models
 from app.database import SessionLocal, engine
-from app.main import event_queue
+from app.events import event_queue
 
 models.Base.metadata.create_all(bind=engine)
 
