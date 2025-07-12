@@ -10,10 +10,11 @@
 <h1>NEO Watcher Dashboard</h1>
 <canvas id="neoChart"></canvas>
 <svg id="dangerMap" width="800" height="600"></svg>
-<form id="subForm">
-  <input type="url" id="subUrl" placeholder="Webhook URL" required />
-  <button type="submit">Subscribe</button>
-</form>
+
+<h2>Subscribers</h2>
+<ul id="subscriberList"></ul>
+<input id="newUrl" placeholder="Webhook URL" />
+<button id="addSub">Add</button>
 <script defer src="app.js"></script>
 </body>
 </html>
