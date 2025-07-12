@@ -1,12 +1,48 @@
 name: CI
-on: [push]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
-      - run: pip install -r requirements.txt
-      - run: pytest
+          python-version: '3.10'
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Lint with flake8
+        run: flake8
+      - name: Check formatting
+        run: black --check .
+      - name: Type-check with mypy
+        run: mypy app
+      - name: Run tests with coverage
+        run: pytest --cov
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Run UI tests
+        run: |
+          npx playwright install --with-deps
+          npx playwright test
+      - name: Build Docker image
+        run: docker build . -t ${{ github.repository }}:${{ github.sha }} --no-cache
+      # - name: Push Docker image
+      #   run: |
+      #     echo "docker login and push commands go here"
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform init
+        run: terraform init
+      - name: Terraform validate
+        run: terraform validate
