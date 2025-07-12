@@ -7,7 +7,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "npx playwright install --with-deps",
+    "test:ui": "npm ci && npm run postinstall && npx playwright test tests/ui"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +19,9 @@
     "animejs": "^4.0.2",
     "chart.js": "^4.5.0",
     "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "playwright": "^1.54.1"
   }
 }

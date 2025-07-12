@@ -10,3 +10,5 @@ jobs:
           python-version: '3.9'
       - run: pip install -r requirements.txt
       - run: pytest
+      - name: Run UI tests
+        run: npm run test:ui

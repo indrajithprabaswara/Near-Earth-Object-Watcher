@@ -8,6 +8,16 @@ test('danger map renders and updates', async ({ page }) => {
     { id: 1, neo_id: '1', name: 'Now', close_approach_date: today, diameter_km: 1.5, velocity_km_s: 1, miss_distance_au: 0.01, hazardous: true }
   ];
 
+  await page.addInitScript(sample => {
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      if (typeof url === 'string' && url.includes('/neos')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sample) });
+      }
+      return origFetch(url, opts);
+    };
+  }, sampleToday);
+
   await page.route('**/neos?*', route => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sampleToday) });
   });

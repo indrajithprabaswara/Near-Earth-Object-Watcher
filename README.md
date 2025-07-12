@@ -16,3 +16,12 @@ docker-compose up --build --detach
 pip install -r requirements.txt
 pytest
 ```
+
+## UI Tests
+
+```bash
+npm install
+npm run test:ui
+```
+
+The `postinstall` step will download the necessary Playwright browsers.
