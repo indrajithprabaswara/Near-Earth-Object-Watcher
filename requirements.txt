@@ -7,8 +7,9 @@ requests
 sse-starlette
 jinja2
 APScheduler
-httpx
+httpx<0.24
 pytest
 pytest-asyncio
+pytest-cov
 respx
 playwright

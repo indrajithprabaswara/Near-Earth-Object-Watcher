@@ -10,6 +10,10 @@
 <body>
 <h1>NEO Watcher Dashboard</h1>
 <canvas id="chart"></canvas>
+<form id="subForm">
+  <input type="url" id="subUrl" placeholder="Webhook URL" required />
+  <button type="submit">Subscribe</button>
+</form>
 <script>
 const evtSource = new EventSource('/stream/neos');
 const ctx = document.getElementById('chart').getContext('2d');
@@ -21,6 +25,12 @@ evtSource.onmessage = function(e){
   chart.update();
   anime({targets:'h1', scale:[1,1.1], direction:'alternate', duration:500});
 };
+document.getElementById('subForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const url = document.getElementById('subUrl').value;
+  await fetch('/subscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url})});
+  document.getElementById('subUrl').value='';
+});
 </script>
 </body>
 </html>
