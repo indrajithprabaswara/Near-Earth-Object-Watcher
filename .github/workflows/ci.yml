@@ -1,12 +1,31 @@
 name: CI
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
       - run: pip install -r requirements.txt
-      - run: pytest
+      - run: flake8
+      - run: black --check .
+      - run: mypy app
+      - run: pytest --cov --cov-fail-under=100
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps
+      - run: npx playwright test
+      - run: docker build . -t ${{ github.repository }}:${{ github.sha }} --no-cache
+      # Login and push to registry if desired
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init
+      - run: terraform validate
