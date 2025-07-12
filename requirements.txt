@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+SQLAlchemy
+alembic
+psycopg2-binary
+requests
+sse-starlette
+jinja2
+APScheduler
+httpx
+pytest
+pytest-asyncio
+respx
+playwright
