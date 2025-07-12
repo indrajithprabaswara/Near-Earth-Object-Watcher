@@ -8,12 +8,12 @@ services:
       POSTGRES_DB: neo_watcher
     ports:
       - "5432:5432"
-  web:
+  app:
     build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8080:8080"
     depends_on:
       - db

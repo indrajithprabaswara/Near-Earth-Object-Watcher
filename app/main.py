@@ -43,6 +43,10 @@ REQUEST_LATENCY = Histogram(
 async def startup_event():
     scheduler.start()
 
+@app.get("/health")
+async def health():  # pragma: no cover - simple health check
+    return {"status": "ok"}
+
 def get_db():
     db = SessionLocal()
     try:
