@@ -42,6 +42,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   window.neoChart = neoChart;
 
+  const today = new Date().toISOString().slice(0,10);
+  let todayNeos = [];
+  try {
+    todayNeos = await fetch(`/neos?start_date=${today}&end_date=${today}`).then(r => r.json());
+  } catch {}
+
+  const svg = d3.select('#dangerMap');
+  const width = +svg.attr('width');
+  const height = +svg.attr('height');
+  const radiusFor = d => Math.max(2, Math.min(20, d.diameter_km * 10));
+
+  const nodes = todayNeos.map(n => ({...n}));
+  let circles = svg.selectAll('circle')
+    .data(nodes)
+    .enter()
+    .append('circle')
+    .attr('fill', d => d.hazardous ? 'red' : 'green')
+    .attr('r', d => radiusFor(d));
+
+  const simulation = d3.forceSimulation(nodes)
+    .force('charge', d3.forceManyBody().strength(5))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collision', d3.forceCollide().radius(d => radiusFor(d)+2))
+    .on('tick', () => {
+      svg.selectAll('circle')
+        .attr('cx', d => d.x)
+        .attr('cy', d => d.y);
+    });
+  window.dangerSim = simulation;
+
+  function addDangerNode(neo) {
+    nodes.push(neo);
+    circles = svg.selectAll('circle')
+      .data(nodes);
+    const enter = circles.enter().append('circle')
+      .attr('fill', neo.hazardous ? 'red' : 'green')
+      .attr('r', 0);
+    anime({ targets: enter.nodes(), r: radiusFor(neo), duration: 500, easing: 'easeOutBack' });
+    circles = enter.merge(circles);
+    simulation.nodes(nodes);
+    simulation.alpha(1).restart();
+  }
+
   function update(neo) {
     const d = neo.close_approach_date;
     if (!stats[d]) {
@@ -61,6 +104,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const neo = JSON.parse(e.data);
       update(neo);
+      if (neo.close_approach_date === today) {
+        addDangerNode({...neo});
+      }
     } catch {}
   };
 
