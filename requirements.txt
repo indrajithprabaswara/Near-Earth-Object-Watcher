@@ -13,3 +13,4 @@ pytest-asyncio
 pytest-cov
 respx
 playwright
+prometheus-client
