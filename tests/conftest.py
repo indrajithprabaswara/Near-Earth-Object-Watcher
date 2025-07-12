@@ -2,7 +2,8 @@ import os
 os.environ['TEST_DB_URL'] = 'sqlite:///test.db'
 import pytest
 from httpx import AsyncClient
-from app.main import app, scheduler, event_queue
+from app.main import app, scheduler
+from app.events import event_queue
 from app import models
 from app.database import engine
 
