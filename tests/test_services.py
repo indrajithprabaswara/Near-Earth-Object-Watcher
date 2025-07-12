@@ -142,3 +142,18 @@ def test_store_neos_retries(monkeypatch):
         assert calls["n"] == 3
     finally:
         db.close()
+
+
+def test_model_repr():
+    n = models.Neo(
+        neo_id="r",
+        name="Rep",
+        close_approach_date=date.today(),
+        diameter_km=1.0,
+        velocity_km_s=1.0,
+        miss_distance_au=0.1,
+        hazardous=False,
+    )
+    s = models.Subscriber(url="http://example.com")
+    assert "<Neo r Rep>" == repr(n)
+    assert "<Subscriber http://example.com>" == repr(s)

@@ -7,6 +7,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app import services, models
 from app.database import engine
+from app import scheduler as scheduler_mod
 from app.scheduler import scheduler, ingest_once
 from app.events import event_queue
 
@@ -24,6 +25,7 @@ async def test_scheduler_config():
 async def test_scheduler_runs(monkeypatch):
     models.Base.metadata.drop_all(bind=engine)
     models.Base.metadata.create_all(bind=engine)
+    event_queue.put_nowait({})
     while not event_queue.empty():
         event_queue.get_nowait()
 
@@ -37,6 +39,7 @@ async def test_scheduler_runs(monkeypatch):
             "miss_distance_au": 0.04,
             "hazardous": True,
         }]
+    fake_fetch(None)
 
     monkeypatch.setattr(services, "fetch_neos", fake_fetch)
     monkeypatch.setattr(services.slack_session, "post", lambda *a, **k: None)
@@ -48,3 +51,25 @@ async def test_scheduler_runs(monkeypatch):
     scheduler.shutdown(wait=False)
 
     assert not event_queue.empty()
+
+
+@pytest.mark.asyncio
+async def test_scheduled_ingest(monkeypatch):
+    called = {"c": False}
+
+    async def fake_ingest_once():
+        called["c"] = True
+
+    monkeypatch.setattr(scheduler_mod, "ingest_once", fake_ingest_once)
+    await scheduler_mod.scheduled_ingest()
+    assert called["c"]
+
+
+@pytest.mark.asyncio
+async def test_startup_event(monkeypatch):
+    from app.main import startup_event
+
+    hit = {"x": False}
+    monkeypatch.setattr(scheduler_mod.scheduler, "start", lambda: hit.update(x=True))
+    await startup_event()
+    assert hit["x"]

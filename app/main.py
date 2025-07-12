@@ -78,7 +78,7 @@ async def get_neo(neo_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Not Found")
     return schemas.NeoRead.from_orm(n)
 
-@app.post("/subscribe")
+@app.post("/subscribe", status_code=201)
 async def subscribe(sub: schemas.SubscriberCreate, db: Session = Depends(get_db)):
     obj = models.Subscriber(url=sub.url)
     db.add(obj)

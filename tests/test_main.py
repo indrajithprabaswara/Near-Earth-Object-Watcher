@@ -1,6 +1,8 @@
 import os
+import asyncio
 import pytest
 from datetime import date
+import json
 
 from app import services, models
 from app.database import SessionLocal, engine
@@ -18,6 +20,7 @@ async def test_root(client):
 async def test_ingest_and_alert(client, monkeypatch):
     models.Base.metadata.drop_all(bind=engine)
     models.Base.metadata.create_all(bind=engine)
+    event_queue.put_nowait({})
     while not event_queue.empty():
         event_queue.get_nowait()
 
@@ -109,7 +112,7 @@ async def test_get_neo_not_found(client):
 @pytest.mark.asyncio
 async def test_subscriber_crud(client):
     resp = await client.post("/subscribe", json={"url": "http://example.com"})
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     sid = resp.json()["id"]
 
     resp = await client.get("/subscribers")
@@ -121,3 +124,88 @@ async def test_subscriber_crud(client):
 
     resp = await client.delete(f"/subscribers/{sid}")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_neo_and_filters_success(client):
+    today = date.today()
+    db = SessionLocal()
+    try:
+        neo = models.Neo(
+            neo_id="3",
+            name="Three",
+            close_approach_date=today,
+            diameter_km=1.0,
+            velocity_km_s=1.0,
+            miss_distance_au=0.04,
+            hazardous=True,
+        )
+        db.add(neo)
+        db.commit()
+        db.refresh(neo)
+        nid = neo.id
+    finally:
+        db.close()
+
+    params = {
+        "start_date": today.isoformat(),
+        "end_date": today.isoformat(),
+        "hazardous": "true",
+    }
+    resp = await client.get("/neos", params=params)
+    assert resp.status_code == 200
+    assert any(n["id"] == nid for n in resp.json())
+
+    resp = await client.get("/neos")
+    assert resp.status_code == 200
+
+    resp = await client.get(f"/neos/{nid}")
+    assert resp.status_code == 200
+    assert resp.json()["id"] == nid
+
+
+@pytest.mark.asyncio
+async def test_stream_neos(monkeypatch):
+    from app.main import stream_neos
+
+    payload = {"hello": "world"}
+    event_queue.put_nowait(payload)
+
+    class Req:
+        def __init__(self):
+            self.calls = 0
+        async def is_disconnected(self):
+            self.calls += 1
+            return self.calls > 1
+
+    resp = await stream_neos(Req())
+    gen = resp.body_iterator
+    event = await gen.__anext__()
+    assert json.loads(event["data"]) == payload
+    with pytest.raises(StopAsyncIteration):
+        await gen.__anext__()
+
+
+@pytest.mark.asyncio
+async def test_stream_neos_heartbeat(monkeypatch):
+    from app.main import stream_neos
+
+    async def fake_wait_for(coro, timeout):
+        coro.close()
+        raise asyncio.TimeoutError
+
+    monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
+
+    class Req:
+        def __init__(self):
+            self.calls = 0
+        async def is_disconnected(self):
+            self.calls += 1
+            return self.calls > 1
+
+    resp = await stream_neos(Req())
+    gen = resp.body_iterator
+    event = await gen.__anext__()
+    assert event["data"] == "ping"
+    with pytest.raises(StopAsyncIteration):
+        await gen.__anext__()
