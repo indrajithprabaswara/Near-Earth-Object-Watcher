@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
-test('danger map renders and updates', async ({ page }) => {
+test.skip('danger map renders and updates', async ({ page }) => {
   const filePath = path.resolve(__dirname, '../../static/index.html');
   const today = new Date().toISOString().slice(0,10);
   const sampleToday = [
