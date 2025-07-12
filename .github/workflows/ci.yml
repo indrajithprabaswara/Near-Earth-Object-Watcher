@@ -28,7 +28,7 @@ jobs:
       - name: Type-check with mypy
         run: mypy app
       - name: Run tests with coverage
-        run: pytest --cov
+        run: pytest --cov --cov-fail-under=100
       - name: Install Node dependencies
         run: npm ci
       - name: Run UI tests
