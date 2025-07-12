@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +10,7 @@ from .database import SessionLocal, engine
 from . import models, schemas
 from .services import fetch_neos, store_neos
 from .scheduler import scheduler
-from datetime import datetime
+from datetime import datetime, date
 import json
 
 models.Base.metadata.create_all(bind=engine)
@@ -35,21 +35,46 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/neos")
-async def get_neos(start_date: str = None, end_date: str = None, hazardous: bool = None, db: Session = Depends(get_db)):
-    q = db.query(models.Neo)
-    if start_date:
-        q = q.filter(models.Neo.close_approach_date >= start_date)
-    if end_date:
-        q = q.filter(models.Neo.close_approach_date <= end_date)
+async def get_neos(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    hazardous: str | None = None,
+    db: Session = Depends(get_db),
+):
+    def parse_date(value: str) -> date:
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date")
+
+    start = parse_date(start_date) if start_date else None
+    end = parse_date(end_date) if end_date else None
+
     if hazardous is not None:
-        q = q.filter(models.Neo.hazardous == hazardous)
-    return [schemas.NeoRead.from_orm(n) for n in q.all()]
+        if hazardous.lower() in {"true", "1"}:
+            hazard_bool = True
+        elif hazardous.lower() in {"false", "0"}:
+            hazard_bool = False
+        else:
+            raise HTTPException(status_code=400, detail="Invalid hazardous")
+    else:
+        hazard_bool = None
+
+    q = db.query(models.Neo)
+    if start:
+        q = q.filter(models.Neo.close_approach_date >= start)
+    if end:
+        q = q.filter(models.Neo.close_approach_date <= end)
+    if hazard_bool is not None:
+        q = q.filter(models.Neo.hazardous == hazard_bool)
+    neos = q.all()
+    return [schemas.NeoRead.from_orm(n) for n in neos]
 
 @app.get("/neos/{neo_id}")
 async def get_neo(neo_id: int, db: Session = Depends(get_db)):
     n = db.query(models.Neo).filter(models.Neo.id == neo_id).first()
     if not n:
-        return {"error": "not found"}
+        raise HTTPException(status_code=404, detail="Not Found")
     return schemas.NeoRead.from_orm(n)
 
 @app.post("/subscribe")
@@ -59,6 +84,22 @@ async def subscribe(sub: schemas.SubscriberCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(obj)
     return schemas.SubscriberRead.from_orm(obj)
+
+
+@app.get("/subscribers")
+async def get_subscribers(db: Session = Depends(get_db)):
+    subs = db.query(models.Subscriber).all()
+    return [schemas.SubscriberRead.from_orm(s) for s in subs]
+
+
+@app.delete("/subscribers/{sub_id}", status_code=204)
+async def delete_subscriber(sub_id: int, db: Session = Depends(get_db)):
+    sub = db.query(models.Subscriber).filter(models.Subscriber.id == sub_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Not Found")
+    db.delete(sub)
+    db.commit()
+    return Response(status_code=204)
 
 event_queue: asyncio.Queue = asyncio.Queue()
 
