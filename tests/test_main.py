@@ -16,41 +16,59 @@ async def test_root(client):
 
 @pytest.mark.asyncio
 async def test_ingest_and_alert(client, monkeypatch):
-    called = {}
+    models.Base.metadata.drop_all(bind=engine)
+    models.Base.metadata.create_all(bind=engine)
+    while not event_queue.empty():
+        event_queue.get_nowait()
 
-    def fake_fetch(d):
-        return [
-            {
-                "neo_id": "1",
-                "name": "Test",
-                "close_approach_date": date.today(),
-                "diameter_km": 1.0,
-                "velocity_km_s": 2.0,
-                "miss_distance_au": 0.01,
-                "hazardous": True,
-            }
-        ]
+    db = SessionLocal()
+    try:
+        db.add(models.Subscriber(url="http://example.com"))
+        db.commit()
+    finally:
+        db.close()
 
-    def fake_slack(url, json, timeout):
-        called["hit"] = True
+    neos = [
+        {
+            "neo_id": "1",
+            "name": "Test",
+            "close_approach_date": date.today(),
+            "diameter_km": 1.0,
+            "velocity_km_s": 2.0,
+            "miss_distance_au": 0.01,
+            "hazardous": True,
+        },
+        {
+            "neo_id": "2",
+            "name": "Far",
+            "close_approach_date": date.today(),
+            "diameter_km": 1.0,
+            "velocity_km_s": 2.0,
+            "miss_distance_au": 0.2,
+            "hazardous": False,
+        },
+    ]
 
-    monkeypatch.setattr(services, "fetch_neos", fake_fetch)
+    monkeypatch.setattr(services, "fetch_neos", lambda d: neos)
     import app.main as main_mod
-    monkeypatch.setattr(main_mod, "fetch_neos", fake_fetch)
-    monkeypatch.setattr(services.slack_session, "post", fake_slack)
+    monkeypatch.setattr(main_mod, "fetch_neos", lambda d: neos)
+
+    sent = []
+    monkeypatch.setattr(services.slack_session, "post", lambda url, json, timeout: sent.append(url))
+    monkeypatch.setattr(main_mod.BackgroundTasks, "add_task", lambda self, fn: fn())
 
     resp = await client.post("/ingest")
     assert resp.status_code == 200
-    assert called.get("hit")
 
     db = SessionLocal()
     try:
         objs = db.query(models.Neo).all()
-        assert len(objs) == 1
+        assert len(objs) == 2
     finally:
         db.close()
 
-    assert not event_queue.empty()
+    assert event_queue.qsize() == 2
+    assert sent == ["http://example.com"]
 
 
 @pytest.mark.asyncio
